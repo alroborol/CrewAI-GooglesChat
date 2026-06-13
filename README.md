@@ -1,12 +1,13 @@
 # Google Chat Webhook Server in Python (FastAPI)
 
-This project provides a minimal HTTP webhook server to receive and respond to Google Chat events using Python and FastAPI.
+This project provides a minimal HTTP webhook server to receive and respond to Google Chat events using Python, FastAPI, and a CrewAI Agent.
 
 ## File Structure
 
-- [app.py](file:///Users/albert/CrewAI-GooglesChat/app.py): The FastAPI server defining the `/webhook` endpoint and the message processing function.
+- [app.py](file:///Users/albert/CrewAI-GooglesChat/app.py): The FastAPI server defining the `/webhook` endpoint, which receives Google Chat events and triggers the CrewAI agent.
+- [crew.py](file:///Users/albert/CrewAI-GooglesChat/crew.py): Defines the CrewAI Agent and task logic, equipped with a simulation mode.
 - [test_webhook.py](file:///Users/albert/CrewAI-GooglesChat/test_webhook.py): Local test runner to simulate Google Chat payloads and verify responses.
-- [requirements.txt](file:///Users/albert/CrewAI-GooglesChat/requirements.txt): List of Python dependencies (FastAPI, Uvicorn).
+- [requirements.txt](file:///Users/albert/CrewAI-GooglesChat/requirements.txt): List of Python dependencies.
 
 ## Installation & Setup
 
@@ -41,6 +42,20 @@ python3 test_webhook.py
 
 It sends mock payloads mimicking a MESSAGE event and an ADDED_TO_SPACE event, printing the returned status and JSON replies.
 
+## CrewAI Simulation Mode vs. Live Mode
+
+On Python 3.14 (a pre-release python version), packages with native extensions (like `tiktoken` used by CrewAI/LiteLLM) must be built from source and require a **Rust compiler**.
+
+- **Simulation Mode (Default)**: If CrewAI is not fully installed, the server automatically falls back to simulating the agent's output. This allows you to immediately test the webhook flow and connection to Google Chat.
+- **Enabling Live Mode**:
+  1. Install a Rust compiler on your system (e.g., using `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` or via your OS package manager).
+  2. Install `crewai` in your virtual environment:
+     ```bash
+     pip install crewai
+     ```
+  3. Set up your LLM API Key (e.g. `export OPENAI_API_KEY="your-key-here"` or `export GEMINI_API_KEY="your-key-here"`).
+  4. Once `crewai` is installed, the application will automatically switch to **Live Mode** and kickoff the real LLM agent workflow.
+
 ## Google Chat Integration
 
 To hook this up as a Google Chat app:
@@ -66,9 +81,8 @@ To hook this up as a Google Chat app:
 
 ## Customizing Message Logic
 
-To implement your actual logic, edit the `process_message()` function inside [app.py](file:///Users/albert/CrewAI-GooglesChat/app.py#L9-L29):
+To implement your custom agent or bot logic, edit the `kickoff_crew()` function inside [crew.py](file:///Users/albert/CrewAI-GooglesChat/crew.py):
 ```python
-def process_message(text: str, sender: str, space_name: str, space_display_name: str, timestamp: str) -> str:
-    # Your custom logic here...
-    return "Your custom reply message"
+def kickoff_crew(message_text: str, sender_name: str, space_display_name: str) -> str:
+    # Your custom CrewAI Agent/Task settings here...
 ```

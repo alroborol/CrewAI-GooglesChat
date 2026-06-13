@@ -10,6 +10,9 @@ from fastapi import FastAPI, Request, Response, status
 from pyasn1.codec.der import decoder
 import rsa
 
+# Import CrewAI kickoff module
+from crew import kickoff_crew
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -137,7 +140,7 @@ def send_message_asynchronously(space_name: str, text: str) -> dict:
 
 def process_message(text: str, sender: str, space_name: str, space_display_name: str, timestamp: str) -> str:
     """
-    Dummy message processor. Implement your custom bot logic here.
+    Passes the incoming message parameters to the CrewAI agent and returns its draft.
     
     Args:
         text (str): The body of the message.
@@ -156,13 +159,17 @@ def process_message(text: str, sender: str, space_name: str, space_display_name:
     logger.info(f"Timestamp: {timestamp}")
     logger.info("--------------------------")
     
-    # Example: How to send a message asynchronously using the service account connector:
-    # (Only runs if service-account.json is present)
-    # if os.path.exists(SERVICE_ACCOUNT_FILE):
-    #     send_message_asynchronously(space_name, f"Async confirmation to {sender}")
+    # Invoke the CrewAI responder agent
+    try:
+        reply = kickoff_crew(
+            message_text=text,
+            sender_name=sender,
+            space_display_name=space_display_name
+        )
+    except Exception as e:
+        logger.error(f"CrewAI agent failed: {e}")
+        reply = f"Error: Failed to process message with CrewAI agent: {e}"
 
-    # Synchronous reply returned directly in response to the webhook call
-    reply = f"Hello {sender}! I received your message: '{text}' in space '{space_display_name}'."
     return reply
 
 @app.post("/webhook")
