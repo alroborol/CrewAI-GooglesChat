@@ -7,17 +7,34 @@ import urllib.request
 import urllib.parse
 import uvicorn
 from fastapi import FastAPI, Request, Response, status
-from pyasn1.codec.der import decoder
-import rsa
 
 # Import CrewAI kickoff module
 from crew import kickoff_crew
+
+# Make cryptography imports optional to prevent import-time crashes
+try:
+    from pyasn1.codec.der import decoder
+    import rsa
+    CRYPTO_AVAILABLE = True
+except ImportError:
+    CRYPTO_AVAILABLE = False
+    decoder = None
+    rsa = None
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Google Chat Webhook")
+
+# Middleware to log every incoming request
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    client_host = request.client.host if request.client else "Unknown"
+    logger.info(f"--> Incoming request: {request.method} {request.url.path} from {client_host}")
+    response = await call_next(request)
+    logger.info(f"<-- Completed request: {request.method} {request.url.path} - Status: {response.status_code}")
+    return response
 
 # Configuration constants
 SCOPES = ["https://www.googleapis.com/auth/chat.bot"]
@@ -43,6 +60,14 @@ def get_access_token() -> str:
     Exchanges the service account credentials for a Google OAuth2 access token.
     Uses pure Python (rsa, pyasn1, and urllib).
     """
+    if not CRYPTO_AVAILABLE:
+        logger.warning(
+            "Cryptographic libraries 'rsa' or 'pyasn1' are not installed. "
+            "Asynchronous message sending will be unavailable. "
+            "Please run: pip install rsa pyasn1"
+        )
+        return ""
+
     if not os.path.exists(SERVICE_ACCOUNT_FILE):
         logger.warning(
             f"Service account file '{SERVICE_ACCOUNT_FILE}' not found. "
